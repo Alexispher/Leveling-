@@ -93,13 +93,14 @@
                 <input type="text" id="new-ma-name" placeholder="Nome (Ex: Jiu-Jitsu)">
                 <input type="date" id="new-ma-date">
                 <select id="new-ma-color">
-                    <option value="white">Branca</option>
-                    <option value="blue">Azul</option>
-                    <option value="purple">Roxa</option>
-                    <option value="brown">Marrom</option>
-                    <option value="black">Preta</option>
-                    <option value="red">Vermelha</option>
+                    <option value="#ffffff">Branca</option>
+                    <option value="#0044cc">Azul</option>
+                    <option value="#6600cc">Roxa</option>
+                    <option value="#663300">Marrom</option>
+                    <option value="#111111">Preta</option>
+                    <option value="#cc0000">Vermelha</option>
                 </select>
+                <input type="number" id="new-ma-graus" placeholder="Graus (0 a 4)" min="0" max="4" style="margin-top: 10px;">
                 <button onclick="adicionarArte()" style="width: 100%;">REGISTRAR</button>
             </div>
         </div>
@@ -129,7 +130,7 @@
             }
         }
 
-        // --- FUNÇÕES DE PERFIL ---
+        // --- FUNÇÕES DE PERFIL COM COMPRESSÃO DE IMAGEM ---
         function criarPerfil() {
             const nick = document.getElementById('input-nick').value;
             const fileInput = document.getElementById('input-avatar');
@@ -139,12 +140,41 @@
             db.nick = nick;
 
             if (fileInput.files && fileInput.files[0]) {
+                const file = fileInput.files[0];
                 const reader = new FileReader();
+                
                 reader.onload = function(e) {
-                    db.avatar = e.target.result; // Salva a imagem como Base64 (suporta GIF)
-                    salvarEAtualizar();
+                    // Se for GIF, salva direto (GIF perde animação se for comprimido)
+                    if (file.type === "image/gif") {
+                        try {
+                            db.avatar = e.target.result;
+                            salvarEAtualizar();
+                        } catch (err) {
+                            alert("Este GIF é muito pesado para o cache. Escolha um arquivo menor.");
+                        }
+                        return;
+                    }
+
+                    // Se for foto (JPEG/PNG), o sistema comprime automaticamente
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        // Reduz a imagem para 150 pixels (tamanho perfeito para avatar)
+                        const MAX_WIDTH = 150; 
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                        // Salva levíssima, ocupando quase zero da memória (70% de qualidade)
+                        db.avatar = canvas.toDataURL('image/jpeg', 0.7);
+                        salvarEAtualizar();
+                    }
+                    img.src = e.target.result;
                 };
-                reader.readAsDataURL(fileInput.files[0]);
+                reader.readAsDataURL(file);
             } else {
                 // Avatar genérico se não enviar foto
                 db.avatar = "https://via.placeholder.com/60/00ffff/000000?text=OP";
@@ -180,14 +210,18 @@
             const nome = document.getElementById('new-ma-name').value;
             const data = document.getElementById('new-ma-date').value;
             const cor = document.getElementById('new-ma-color').value;
+            let graus = parseInt(document.getElementById('new-ma-graus').value);
 
             if (!nome || !data) return alert("Preencha o nome e a data.");
+            if (isNaN(graus) || graus < 0) graus = 0;
+            if (graus > 4) graus = 4;
 
-            db.artes.push({ nome: nome, dataInicio: data, corCSS: cor, graus: 0 });
+            db.artes.push({ nome: nome, dataInicio: data, corCSS: cor, graus: graus });
             
             // Limpa os inputs
             document.getElementById('new-ma-name').value = '';
             document.getElementById('new-ma-date').value = '';
+            document.getElementById('new-ma-graus').value = '';
             
             salvarEAtualizar();
         }
@@ -225,9 +259,18 @@
                         <div class="belt" style="background-color: ${arte.corCSS};">
                             <div class="stripes">${divGraus}</div>
                         </div>
+                        <button onclick="removerArte(${index})" style="width: 100%; border-color: #550; color: #ccaa00; margin-top: 5px; font-size: 0.8rem;">REMOVER ARTE</button>
                     </div>
                 `;
             });
+        }
+        
+        // --- FUNÇÃO PARA REMOVER UMA ARTE MARCIAL ---
+        function removerArte(index) {
+            if(confirm("Deseja remover este registro de combate?")) {
+                db.artes.splice(index, 1);
+                salvarEAtualizar();
+            }
         }
 
         // --- RESET GERAL ---
