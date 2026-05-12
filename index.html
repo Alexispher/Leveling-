@@ -1,288 +1,551 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en-GB">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PEGASUS OS - Terminal</title>
+    <title>PEGASUS OS - Tactical Terminal</title>
     <style>
         :root {
             --bg-color: #050505;
             --panel-bg: #111;
-            --cyan: #00ffff;
+            --accent: #00ffff; /* Default Cyan */
             --text-main: #eee;
             --text-muted: #888;
         }
         
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding-bottom: 70px; }
         
         .hidden { display: none !important; }
 
-        /* HEADER E PERFIL */
-        header { display: flex; align-items: center; border-bottom: 2px solid var(--cyan); padding-bottom: 15px; margin-bottom: 20px; }
-        .avatar { width: 60px; height: 60px; border-radius: 5px; border: 1px solid var(--cyan); object-fit: cover; margin-right: 15px; }
-        .header-info h1 { color: var(--cyan); font-size: 1.2rem; text-transform: uppercase; }
-        .header-info p { color: var(--text-muted); font-size: 0.9rem; }
-
-        /* PAINEIS TÁTICOS */
-        .panel { background-color: var(--panel-bg); border: 1px solid #333; border-radius: 5px; padding: 15px; margin-bottom: 15px; box-shadow: 0 0 10px rgba(0, 255, 255, 0.05); }
-        .panel-title { color: var(--cyan); font-size: 1.1rem; margin-bottom: 15px; border-bottom: 1px dashed #333; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center;}
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; align-items: center;}
-        .highlight { color: var(--cyan); font-weight: bold; }
-
-        /* BOTÕES E INPUTS */
-        button { background-color: transparent; color: var(--cyan); border: 1px solid var(--cyan); padding: 5px 10px; cursor: pointer; font-weight: bold; text-transform: uppercase; border-radius: 3px; }
-        button:active { background-color: var(--cyan); color: #000; }
-        input, select { background-color: #000; color: var(--cyan); border: 1px solid #333; padding: 8px; width: 100%; margin-bottom: 10px; font-family: 'Courier New', Courier, monospace; }
-        input[type="file"] { padding: 5px; color: var(--text-muted); }
-
-        /* BARRA DE PROGRESSO E FAIXAS */
-        .progress-bar { width: 100%; background-color: #222; height: 10px; border-radius: 5px; margin-top: 5px; overflow: hidden; }
-        .progress-fill { height: 100%; background-color: var(--cyan); width: 0%; transition: width 0.3s; }
+        /* HEADER & PROFILE */
+        header { display: flex; align-items: center; border-bottom: 2px solid var(--accent); padding: 15px; background-color: var(--panel-bg); }
+        .avatar { width: 60px; height: 60px; border-radius: 5px; border: 1px solid var(--accent); object-fit: cover; margin-right: 15px; }
+        .header-info h1 { color: var(--accent); font-size: 1.2rem; text-transform: uppercase; }
+        .header-info p { color: var(--text-muted); font-size: 0.85rem; margin-top: 5px; }
         
-        .belt-container { margin-top: 15px; padding-top: 10px; border-top: 1px solid #222;}
+        .progress-bar { width: 100%; background-color: #222; height: 8px; border-radius: 5px; margin-top: 5px; overflow: hidden; }
+        .progress-fill { height: 100%; background-color: var(--accent); width: 0%; transition: width 0.3s; }
+
+        /* TABS NAVIGATION */
+        .navbar { position: fixed; bottom: 0; width: 100%; background-color: var(--panel-bg); border-top: 2px solid var(--accent); display: flex; justify-content: space-around; padding: 10px 0; z-index: 100;}
+        .nav-btn { background: none; border: none; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; cursor: pointer; flex: 1; font-weight: bold; }
+        .nav-btn.active { color: var(--accent); text-shadow: 0 0 5px var(--accent); }
+
+        /* PAGE CONTAINERS */
+        .page { padding: 15px; animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* PANELS & UI ELEMENTS */
+        .panel { background-color: var(--panel-bg); border: 1px solid #333; border-radius: 5px; padding: 15px; margin-bottom: 15px; }
+        .panel-title { color: var(--accent); font-size: 1.1rem; margin-bottom: 15px; border-bottom: 1px dashed #333; padding-bottom: 5px; text-transform: uppercase;}
+        
+        button { background-color: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 8px 12px; cursor: pointer; font-weight: bold; text-transform: uppercase; border-radius: 3px; width: 100%; margin-bottom: 10px; }
+        button:active { background-color: var(--accent); color: #000; }
+        button:disabled { border-color: #444; color: #444; cursor: not-allowed; }
+
+        input, select { background-color: #000; color: var(--accent); border: 1px solid #333; padding: 10px; width: 100%; margin-bottom: 10px; }
+        
+        /* QUESTS */
+        .quest-box { border-left: 3px solid var(--accent); padding: 10px; background: rgba(255,255,255,0.02); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .quest-info h3 { font-size: 0.95rem; color: #fff; }
+        .quest-info p { font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; }
+        .btn-claim { width: auto; margin: 0; padding: 5px 10px; font-size: 0.8rem; }
+
+        /* CODEX & INVENTORY */
+        .codex-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+        .item-card { border: 1px solid #333; padding: 10px; text-align: center; border-radius: 5px; background: #0a0a0a; }
+        .item-card.locked { border-color: #222; color: #444; }
+        .item-card.locked .item-icon { filter: grayscale(100%) opacity(30%); }
+        .item-title { font-weight: bold; margin-bottom: 5px; font-size: 0.9rem; }
+        .item-desc { font-size: 0.75rem; color: #aaa; }
+        
+        .rarity-common { color: #aaaaaa; border-color: #aaaaaa !important; }
+        .rarity-uncommon { color: #55ff55; border-color: #55ff55 !important; }
+        .rarity-rare { color: #5555ff; border-color: #5555ff !important; }
+        .rarity-legendary { color: #ffaa00; border-color: #ffaa00 !important; box-shadow: 0 0 10px rgba(255,170,0,0.2); }
+        .rarity-ultra { color: #ff00ff; border-color: #ff00ff !important; box-shadow: 0 0 15px rgba(255,0,255,0.4); text-shadow: 0 0 5px #ff00ff; }
+
+        /* MARTIAL ARTS */
+        .belt-container { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #222;}
         .belt { height: 25px; width: 100%; background-color: #fff; border: 2px solid #222; position: relative; margin-top: 5px; border-radius: 3px; }
         .stripes { position: absolute; right: 10px; top: 0; height: 100%; width: 30px; background-color: #000; display: flex; justify-content: space-evenly; align-items: center; }
         .stripe { height: 100%; width: 4px; background-color: #fff; }
 
-        /* TELA DE LOGIN/SETUP */
-        #setup-screen { text-align: center; margin-top: 20vh; }
-        #setup-screen h2 { color: var(--cyan); margin-bottom: 20px; }
+        /* SKILL TREE */
+        .skill-node { border: 1px dashed var(--accent); padding: 10px; text-align: center; margin-bottom: 10px; cursor: pointer; transition: 0.3s; }
+        .skill-node.unlocked { background: rgba(0, 255, 255, 0.1); border-style: solid; font-weight: bold; }
+
+        /* ALERTS */
+        #custom-alert { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #111; border: 1px solid var(--accent); color: #fff; padding: 15px; border-radius: 5px; z-index: 1000; display: none; text-align: center; min-width: 250px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);}
+        #custom-alert.show { display: block; animation: dropDown 0.3s ease forwards; }
+        @keyframes dropDown { from { top: -50px; opacity: 0; } to { top: 20px; opacity: 1; } }
+
     </style>
 </head>
 <body>
 
-    <!-- TELA 1: CRIAÇÃO DE PERFIL -->
-    <div id="setup-screen" class="panel">
-        <h2>INICIAR PROTOCOLO PEGASUS</h2>
-        <input type="text" id="input-nick" placeholder="Digite seu Nickname" autocomplete="off">
-        <div style="text-align: left; margin-bottom: 5px; color: var(--text-muted); font-size: 0.8rem;">Selecione um Avatar (Foto/GIF):</div>
-        <input type="file" id="input-avatar" accept="image/*">
-        <button onclick="criarPerfil()" style="width: 100%; padding: 10px; margin-top: 10px;">CRIAR OPERADOR</button>
+    <!-- ALERT SYSTEM -->
+    <div id="custom-alert"></div>
+
+    <!-- INITIAL SETUP SCREEN -->
+    <div id="setup-screen" class="page">
+        <div class="panel" style="margin-top: 20vh;">
+            <h2 class="panel-title" style="text-align: center;">SYSTEM INITIALISATION</h2>
+            <input type="text" id="input-nick" placeholder="Enter Nickname" autocomplete="off">
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">Select Avatar (Photo/GIF):</div>
+            <input type="file" id="input-avatar" accept="image/*">
+            <button onclick="createProfile()">INITIALISE OPERATOR</button>
+        </div>
     </div>
 
-    <!-- TELA 2: TERMINAL PRINCIPAL -->
+    <!-- MAIN APP SCREEN -->
     <div id="app-screen" class="hidden">
+        
         <header>
-            <img id="user-avatar" class="avatar" src="" alt="Avatar">
-            <div class="header-info">
-                <h1 id="user-nick">OPERADOR</h1>
-                <p>Status: Ativo | <span class="highlight" id="user-rank">BRONZE</span></p>
+            <img id="header-avatar" class="avatar" src="" alt="Avatar">
+            <div class="header-info" style="width: 100%;">
+                <h1 id="header-nick">OPERATOR</h1>
+                <p>Level <span id="header-level" style="color: var(--accent); font-weight: bold;">1</span> | Rank: <span id="header-rank" style="color: var(--accent);">BRONZE</span></p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="header-xp-bar"></div>
+                </div>
+                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; text-align: right;"><span id="header-xp">0</span>/100 XP</div>
             </div>
         </header>
 
-        <div class="panel">
-            <h2 class="panel-title">MÓDULO DE PROGRESSÃO</h2>
-            <div class="stat-row">
-                <span>Nível <span id="user-level" class="highlight">1</span></span>
-                <button onclick="ganharXP(25)">+ XP</button>
+        <!-- PAGE 1: QUESTS -->
+        <div id="page-quests" class="page">
+            <h2 class="panel-title">ACTIVE QUESTS</h2>
+            <div class="panel">
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">DAILY (Resets 00:00)</h3>
+                <div id="quests-daily-container"></div>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="xp-bar"></div>
+            <div class="panel">
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">WEEKLY (Resets Mon 06:00 AM)</h3>
+                <div id="quests-weekly-container"></div>
             </div>
-            <div style="text-align: right; font-size: 0.8rem; margin-top: 5px; color: var(--text-muted);"><span id="user-xp">0</span> / 100 XP</div>
+            <div class="panel">
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">MONTHLY (Resets Day 1 00:00)</h3>
+                <div id="quests-monthly-container"></div>
+            </div>
         </div>
 
-        <div class="panel">
-            <h2 class="panel-title">REGISTRO DE COMBATE</h2>
+        <!-- PAGE 2: COMBAT -->
+        <div id="page-combat" class="page hidden">
+            <h2 class="panel-title">COMBAT LOG</h2>
+            <div class="panel" id="martial-arts-list"></div>
             
-            <div id="martial-arts-list"></div>
-
-            <div style="margin-top: 20px; padding: 10px; border: 1px dashed #333;">
-                <div style="color: var(--cyan); margin-bottom: 10px; font-size: 0.9rem;">+ CADASTRAR ARTE MARCIAL</div>
-                <input type="text" id="new-ma-name" placeholder="Nome (Ex: Jiu-Jitsu)">
+            <div class="panel">
+                <h3 style="color: var(--accent); font-size: 0.9rem; margin-bottom: 10px;">+ REGISTER DISCIPLINE</h3>
+                <input type="text" id="new-ma-name" placeholder="Discipline (e.g. Jiu-Jitsu)">
                 <input type="date" id="new-ma-date">
                 <select id="new-ma-color">
-                    <option value="#ffffff">Branca</option>
-                    <option value="#0044cc">Azul</option>
-                    <option value="#6600cc">Roxa</option>
-                    <option value="#663300">Marrom</option>
-                    <option value="#111111">Preta</option>
-                    <option value="#cc0000">Vermelha</option>
+                    <option value="#ffffff">White Belt</option>
+                    <option value="#0044cc">Blue Belt</option>
+                    <option value="#6600cc">Purple Belt</option>
+                    <option value="#663300">Brown Belt</option>
+                    <option value="#111111">Black Belt</option>
+                    <option value="#cc0000">Red Belt</option>
                 </select>
-                <input type="number" id="new-ma-graus" placeholder="Graus (0 a 4)" min="0" max="4" style="margin-top: 10px;">
-                <button onclick="adicionarArte()" style="width: 100%;">REGISTRAR</button>
+                <input type="number" id="new-ma-graus" placeholder="Stripes/Degrees (0-4)" min="0" max="4">
+                <button onclick="addMartialArt()">REGISTER</button>
             </div>
         </div>
-        
-        <button onclick="resetarSistema()" style="width: 100%; border-color: #550000; color: #ff5555;">[ PERIGO ] RESETAR SISTEMA</button>
+
+        <!-- PAGE 3: CODEX (INVENTORY) -->
+        <div id="page-codex" class="page hidden">
+            <h2 class="panel-title">THE CODEX</h2>
+            <div class="panel">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">
+                    Loot is acquired by completing quests. Ultra Rares drop at 0.01%.
+                </p>
+                <div id="codex-grid" class="codex-grid"></div>
+            </div>
+        </div>
+
+        <!-- PAGE 4: SKILL TREE -->
+        <div id="page-skills" class="page hidden">
+            <h2 class="panel-title">SKILL TREE</h2>
+            <div class="panel">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">Spend acquired XP levels to unlock nodes. (Conceptual UI)</p>
+                
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 5px;">THE ARCHITECT (Dev)</h3>
+                <div class="skill-node unlocked" onclick="showAlert('Node Unlocked: Systems Logic')">Systems Logic (Rust/Go/Python)</div>
+                
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 5px; margin-top: 15px;">THE OPERATOR (Combat)</h3>
+                <div class="skill-node" onclick="showAlert('Node Locked. Requires Level 20.')">Advanced Proprioception</div>
+                
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 5px; margin-top: 15px;">THE MENTALIST</h3>
+                <div class="skill-node" onclick="showAlert('Node Locked. Requires Level 30.')">Micro-expression Tracker</div>
+            </div>
+        </div>
+
+        <!-- PAGE 5: SETTINGS -->
+        <div id="page-settings" class="page hidden">
+            <h2 class="panel-title">SYSTEM SETTINGS</h2>
+            <div class="panel">
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">UPDATE PROFILE</h3>
+                <input type="text" id="edit-nick" placeholder="New Nickname">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">Change Avatar:</div>
+                <input type="file" id="edit-avatar" accept="image/*">
+                <button onclick="updateProfile()">SAVE PROFILE</button>
+            </div>
+
+            <div class="panel">
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">SYSTEM COLOUR (Accent)</h3>
+                <input type="color" id="edit-color" value="#00ffff" style="height: 50px; padding: 0; cursor: pointer;">
+                <button onclick="updateThemeColor()">APPLY COLOUR</button>
+            </div>
+
+            <button onclick="resetSystem()" style="border-color: #550000; color: #ff5555; margin-top: 20px;">[ DANGER ] FACTORY RESET</button>
+        </div>
+
+        <!-- NAVBAR -->
+        <nav class="navbar">
+            <button class="nav-btn active" onclick="switchTab('quests', this)">Quests</button>
+            <button class="nav-btn" onclick="switchTab('combat', this)">Combat</button>
+            <button class="nav-btn" onclick="switchTab('codex', this)">Codex</button>
+            <button class="nav-btn" onclick="switchTab('skills', this)">Skills</button>
+            <button class="nav-btn" onclick="switchTab('settings', this)">Config</button>
+        </nav>
     </div>
 
     <script>
-        // --- SISTEMA DE DADOS (LOCAL STORAGE) ---
+        // --- DATABASE ---
         let db = {
             nick: "",
             avatar: "",
-            nivel: 1,
+            theme: "#00ffff",
+            level: 1,
             xp: 0,
-            artes: []
+            artes: [],
+            inventory: [], // Stores unlocked Item IDs
+            questTimers: {} // Stores { "questId": timestampCompleted }
         };
 
-        const ranks = ["Bronze", "Prata", "Ouro", "Platina", "Diamante", "Mestre", "Grão-Mestre", "Ruby"];
+        const ranks = ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Grandmaster", "Ruby"];
 
-        function iniciar() {
-            const savedData = localStorage.getItem('pegasus_db');
-            if (savedData) {
-                db = JSON.parse(savedData);
+        // --- GLOBAL ITEMS DATABASE (THE CODEX) ---
+        const codexItems = [
+            { id: 1, name: "Data Fragment", rarity: "Common", css: "rarity-common", chance: 50.0, desc: "A basic piece of code logic." },
+            { id: 2, name: "Tactical Thread", rarity: "Uncommon", css: "rarity-uncommon", chance: 29.0, desc: "High-tensile tailoring material." },
+            { id: 3, name: "Ada's Grappling Hook", rarity: "Rare", css: "rarity-rare", chance: 15.0, desc: "A sophisticated infiltration tool." },
+            { id: 4, name: "Hunter 350 Blueprint", rarity: "Legendary", css: "rarity-legendary", chance: 4.99, desc: "Advanced schematic of a Royal Enfield machine." },
+            { id: 5, name: "Darkness Hunter Rune", rarity: "Ultra Rare", css: "rarity-ultra", chance: 0.01, desc: "An artifact of immense power. It pulses with evolving flame." }
+        ];
+
+        // --- QUESTS DEFINITION ---
+        const questsDB = [
+            { id: "d1", title: "Heavy Duty Execution", type: "daily", xp: 15 },
+            { id: "d2", title: "PEGASUS Code Review", type: "daily", xp: 15 },
+            { id: "w1", title: "Develop Tactical Armour", type: "weekly", xp: 50 },
+            { id: "w2", title: "Complete Lore Chapter", type: "weekly", xp: 50 },
+            { id: "m1", title: "Platinum a Souls Game", type: "monthly", xp: 200 }
+        ];
+
+        // --- CORE FUNCTIONS ---
+        function init() {
+            const saved = localStorage.getItem('pegasus_db_v4');
+            if (saved) {
+                db = JSON.parse(saved);
                 document.getElementById('setup-screen').classList.add('hidden');
                 document.getElementById('app-screen').classList.remove('hidden');
-                atualizarInterface();
+                applyTheme();
+                updateUI();
             }
         }
 
-        // --- FUNÇÕES DE PERFIL COM COMPRESSÃO DE IMAGEM ---
-        function criarPerfil() {
+        function switchTab(tabName, btnElement) {
+            document.querySelectorAll('.page').forEach(page => {
+                if(page.id !== 'setup-screen') page.classList.add('hidden');
+            });
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById('page-' + tabName).classList.remove('hidden');
+            btnElement.classList.add('active');
+            updateUI(); // Refresh data on tab switch
+        }
+
+        // --- PROFILE LOGIC ---
+        function createProfile() {
             const nick = document.getElementById('input-nick').value;
             const fileInput = document.getElementById('input-avatar');
-            
-            if (!nick) return alert("Digite um Nickname.");
+            if (!nick) return showAlert("Error: Nickname required.");
 
             db.nick = nick;
+            processImage(fileInput, () => saveAndRefresh());
+        }
 
+        function updateProfile() {
+            const nick = document.getElementById('edit-nick').value;
+            const fileInput = document.getElementById('edit-avatar');
+            if (nick) db.nick = nick;
+            
+            if (fileInput.files.length > 0) {
+                processImage(fileInput, () => {
+                    showAlert("Profile Updated!");
+                    saveAndRefresh();
+                });
+            } else {
+                showAlert("Profile Updated!");
+                saveAndRefresh();
+            }
+        }
+
+        function updateThemeColor() {
+            const color = document.getElementById('edit-color').value;
+            if (color === "#000000" || color === "#010101") {
+                showAlert("Error: Pure black is restricted for UI visibility.");
+                return;
+            }
+            db.theme = color;
+            applyTheme();
+            saveAndRefresh();
+            showAlert("Theme Updated!");
+        }
+
+        function applyTheme() {
+            document.documentElement.style.setProperty('--accent', db.theme);
+            document.getElementById('edit-color').value = db.theme;
+        }
+
+        function processImage(fileInput, callback) {
             if (fileInput.files && fileInput.files[0]) {
                 const file = fileInput.files[0];
                 const reader = new FileReader();
-                
                 reader.onload = function(e) {
-                    // Se for GIF, salva direto (GIF perde animação se for comprimido)
                     if (file.type === "image/gif") {
-                        try {
-                            db.avatar = e.target.result;
-                            salvarEAtualizar();
-                        } catch (err) {
-                            alert("Este GIF é muito pesado para o cache. Escolha um arquivo menor.");
-                        }
+                        try { db.avatar = e.target.result; callback(); } 
+                        catch (err) { showAlert("GIF too heavy."); }
                         return;
                     }
-
-                    // Se for foto (JPEG/PNG), o sistema comprime automaticamente
                     const img = new Image();
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
-                        // Reduz a imagem para 150 pixels (tamanho perfeito para avatar)
                         const MAX_WIDTH = 150; 
-                        const scaleSize = MAX_WIDTH / img.width;
-                        canvas.width = MAX_WIDTH;
-                        canvas.height = img.height * scaleSize;
-
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                        // Salva levíssima, ocupando quase zero da memória (70% de qualidade)
-                        db.avatar = canvas.toDataURL('image/jpeg', 0.7);
-                        salvarEAtualizar();
+                        const scale = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH; canvas.height = img.height * scale;
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        db.avatar = canvas.toDataURL('image/jpeg', 0.8);
+                        callback();
                     }
                     img.src = e.target.result;
                 };
                 reader.readAsDataURL(file);
             } else {
-                // Avatar genérico se não enviar foto
-                db.avatar = "https://via.placeholder.com/60/00ffff/000000?text=OP";
-                salvarEAtualizar();
+                if(!db.avatar) db.avatar = "https://via.placeholder.com/60/111/fff?text=OP";
+                callback();
             }
         }
 
-        function salvarEAtualizar() {
-            localStorage.setItem('pegasus_db', JSON.stringify(db));
-            document.getElementById('setup-screen').classList.add('hidden');
-            document.getElementById('app-screen').classList.remove('hidden');
-            atualizarInterface();
-        }
-
-        // --- PROGRESSÃO DE NÍVEL ---
-        function ganharXP(qtd) {
-            db.xp += qtd;
-            if (db.xp >= 100) {
-                db.nivel += Math.floor(db.xp / 100);
-                db.xp = db.xp % 100;
+        // --- LEVELING SYSTEM ---
+        function saveAndRefresh() {
+            localStorage.setItem('pegasus_db_v4', JSON.stringify(db));
+            if(document.getElementById('setup-screen').classList.contains('hidden') === false) {
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('app-screen').classList.remove('hidden');
             }
-            salvarEAtualizar();
+            updateUI();
         }
 
-        function calcularRank() {
-            let index = Math.floor(db.nivel / 13);
+        function addXP(amount) {
+            db.xp += amount;
+            let leveledUp = false;
+            while (db.xp >= 100) {
+                db.level++;
+                db.xp -= 100;
+                leveledUp = true;
+            }
+            if (leveledUp) showAlert(`LEVEL UP! You are now Level ${db.level}`);
+            saveAndRefresh();
+        }
+
+        function getRank() {
+            let index = Math.floor(db.level / 13);
             if (index >= ranks.length) index = ranks.length - 1;
             return ranks[index];
         }
 
-        // --- ARTES MARCIAIS ---
-        function adicionarArte() {
-            const nome = document.getElementById('new-ma-name').value;
-            const data = document.getElementById('new-ma-date').value;
-            const cor = document.getElementById('new-ma-color').value;
-            let graus = parseInt(document.getElementById('new-ma-graus').value);
-
-            if (!nome || !data) return alert("Preencha o nome e a data.");
-            if (isNaN(graus) || graus < 0) graus = 0;
-            if (graus > 4) graus = 4;
-
-            db.artes.push({ nome: nome, dataInicio: data, corCSS: cor, graus: graus });
+        // --- LOOT RNG (GACHA SYSTEM) ---
+        function rollLoot() {
+            const roll = Math.random() * 100; // 0 to 99.999...
+            let cumulative = 0;
             
-            // Limpa os inputs
-            document.getElementById('new-ma-name').value = '';
-            document.getElementById('new-ma-date').value = '';
-            document.getElementById('new-ma-graus').value = '';
+            // Sort items by chance ascending to test ultra rare first
+            const sortedItems = [...codexItems].sort((a,b) => a.chance - b.chance);
             
-            salvarEAtualizar();
-        }
-
-        function calcularDias(dataInicio) {
-            const inicio = new Date(dataInicio);
-            const hoje = new Date();
-            const diferenca = Math.abs(hoje - inicio);
-            return Math.floor(diferenca / (1000 * 60 * 60 * 24));
-        }
-
-        // --- RENDERIZAÇÃO DA INTERFACE ---
-        function atualizarInterface() {
-            document.getElementById('user-nick').innerText = db.nick;
-            document.getElementById('user-avatar').src = db.avatar;
-            document.getElementById('user-level').innerText = db.nivel;
-            document.getElementById('user-xp').innerText = db.xp;
-            document.getElementById('xp-bar').style.width = db.xp + "%";
-            document.getElementById('user-rank').innerText = calcularRank().toUpperCase();
-
-            const lista = document.getElementById('martial-arts-list');
-            lista.innerHTML = "";
-
-            db.artes.forEach((arte, index) => {
-                const dias = calcularDias(arte.dataInicio);
-                let divGraus = "";
-                for(let i=0; i < arte.graus; i++) divGraus += '<div class="stripe"></div>';
-
-                lista.innerHTML += `
-                    <div class="belt-container">
-                        <div class="stat-row">
-                            <span>${arte.nome.toUpperCase()}</span>
-                            <span class="highlight">${dias} Dias</span>
-                        </div>
-                        <div class="belt" style="background-color: ${arte.corCSS};">
-                            <div class="stripes">${divGraus}</div>
-                        </div>
-                        <button onclick="removerArte(${index})" style="width: 100%; border-color: #550; color: #ccaa00; margin-top: 5px; font-size: 0.8rem;">REMOVER ARTE</button>
-                    </div>
-                `;
-            });
-        }
-        
-        // --- FUNÇÃO PARA REMOVER UMA ARTE MARCIAL ---
-        function removerArte(index) {
-            if(confirm("Deseja remover este registro de combate?")) {
-                db.artes.splice(index, 1);
-                salvarEAtualizar();
+            for (let item of sortedItems) {
+                if (roll <= item.chance) {
+                    if (!db.inventory.includes(item.id)) {
+                        db.inventory.push(item.id);
+                        showAlert(`LOOT ACQUIRED: ${item.name} (${item.rarity})`);
+                        saveAndRefresh();
+                    } else {
+                        showAlert(`Duplicate Item converted to XP (+5)`);
+                        addXP(5);
+                    }
+                    return;
+                }
             }
         }
 
-        // --- RESET GERAL ---
-        function resetarSistema() {
-            if(confirm("ATENÇÃO: Deseja apagar todos os dados e formatar o operador?")) {
-                localStorage.removeItem('pegasus_db');
+        // --- QUEST LOGIC & TIMERS ---
+        function claimQuest(questId, xp) {
+            db.questTimers[questId] = Date.now();
+            addXP(xp);
+            rollLoot();
+            updateUI();
+        }
+
+        function isQuestAvailable(questId, type) {
+            const lastDone = db.questTimers[questId];
+            if (!lastDone) return true; // Never done
+
+            const now = new Date();
+            const last = new Date(lastDone);
+
+            if (type === "daily") {
+                // Must be a different calendar day
+                return last.getDate() !== now.getDate() || last.getMonth() !== now.getMonth();
+            } 
+            else if (type === "weekly") {
+                // Must be past the next Monday 06:00 AM
+                let nextMonday = new Date(last);
+                nextMonday.setDate(last.getDate() + ((1 + 7 - last.getDay()) % 7 || 7));
+                nextMonday.setHours(6, 0, 0, 0);
+                return now >= nextMonday;
+            }
+            else if (type === "monthly") {
+                // Must be past the 1st of the next month 00:00 AM
+                let nextMonth = new Date(last.getFullYear(), last.getMonth() + 1, 1, 0, 0, 0, 0);
+                return now >= nextMonth;
+            }
+            return false;
+        }
+
+        // --- RENDER UI ---
+        function updateUI() {
+            // Header
+            document.getElementById('header-nick').innerText = db.nick;
+            document.getElementById('header-avatar').src = db.avatar;
+            document.getElementById('header-level').innerText = db.level;
+            document.getElementById('header-xp').innerText = db.xp;
+            document.getElementById('header-xp-bar').style.width = db.xp + "%";
+            document.getElementById('header-rank').innerText = getRank().toUpperCase();
+
+            renderQuests();
+            renderCodex();
+            renderMartialArts();
+        }
+
+        function renderQuests() {
+            document.getElementById('quests-daily-container').innerHTML = '';
+            document.getElementById('quests-weekly-container').innerHTML = '';
+            document.getElementById('quests-monthly-container').innerHTML = '';
+
+            questsDB.forEach(q => {
+                const available = isQuestAvailable(q.id, q.type);
+                const html = `
+                    <div class="quest-box" style="opacity: ${available ? '1' : '0.5'}">
+                        <div class="quest-info">
+                            <h3>${q.title}</h3>
+                            <p>Reward: ${q.xp} XP + Drop Chance</p>
+                        </div>
+                        <button class="btn-claim" ${!available ? 'disabled' : ''} 
+                                onclick="claimQuest('${q.id}', ${q.xp})">
+                            ${available ? 'CLAIM' : 'DONE'}
+                        </button>
+                    </div>`;
+                
+                if(q.type === 'daily') document.getElementById('quests-daily-container').innerHTML += html;
+                if(q.type === 'weekly') document.getElementById('quests-weekly-container').innerHTML += html;
+                if(q.type === 'monthly') document.getElementById('quests-monthly-container').innerHTML += html;
+            });
+        }
+
+        function renderCodex() {
+            const grid = document.getElementById('codex-grid');
+            grid.innerHTML = '';
+
+            codexItems.forEach(item => {
+                const unlocked = db.inventory.includes(item.id);
+                if(unlocked) {
+                    grid.innerHTML += `
+                        <div class="item-card ${item.css}">
+                            <div class="item-title">${item.name}</div>
+                            <div class="item-desc">${item.desc}</div>
+                            <div style="font-size: 0.7rem; margin-top:5px; text-transform: uppercase;">[ ${item.rarity} ]</div>
+                        </div>`;
+                } else {
+                    grid.innerHTML += `
+                        <div class="item-card locked">
+                            <div class="item-title">???</div>
+                            <div class="item-desc">Item locked in database.</div>
+                        </div>`;
+                }
+            });
+        }
+
+        function renderMartialArts() {
+            const list = document.getElementById('martial-arts-list');
+            list.innerHTML = "";
+            db.artes.forEach((a, i) => {
+                const diff = Math.abs(new Date() - new Date(a.date));
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const stripes = '<div class="stripe"></div>'.repeat(a.graus);
+                list.innerHTML += `
+                    <div class="belt-container">
+                        <div style="display:flex; justify-content:space-between; color:#fff;">
+                            <span style="font-weight:bold; text-transform:uppercase;">${a.name}</span>
+                            <span style="color:var(--accent);">${days} Days</span>
+                        </div>
+                        <div class="belt" style="background-color: ${a.color};">
+                            <div class="stripes">${stripes}</div>
+                        </div>
+                        <button onclick="removeMartialArt(${i})" style="padding: 5px; margin-top: 10px; font-size: 0.7rem; border-color: #444; color: #888;">Remove Record</button>
+                    </div>`;
+            });
+        }
+
+        // --- EXTRAS ---
+        function addMartialArt() {
+            const name = document.getElementById('new-ma-name').value;
+            const date = document.getElementById('new-ma-date').value;
+            const color = document.getElementById('new-ma-color').value;
+            let graus = parseInt(document.getElementById('new-ma-graus').value) || 0;
+            
+            if (!name || !date) return showAlert("Error: Name and Date required.");
+            if (graus > 4) graus = 4;
+
+            db.artes.push({ name, date, color, graus });
+            document.getElementById('new-ma-name').value = '';
+            saveAndRefresh();
+            showAlert("Discipline Recorded!");
+        }
+
+        function removeMartialArt(index) {
+            if(confirm("Delete this combat record?")) {
+                db.artes.splice(index, 1);
+                saveAndRefresh();
+            }
+        }
+
+        function showAlert(msg) {
+            const alertBox = document.getElementById('custom-alert');
+            alertBox.innerText = msg;
+            alertBox.classList.add('show');
+            setTimeout(() => alertBox.classList.remove('show'), 3000);
+        }
+
+        function resetSystem() {
+            if(confirm("WARNING: Delete all data?")) {
+                localStorage.removeItem('pegasus_db_v4');
                 location.reload();
             }
         }
 
-        // Executa ao carregar a página
-        window.onload = iniciar;
+        window.onload = init;
     </script>
 </body>
 </html>
