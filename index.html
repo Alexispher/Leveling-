@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PEGASUS OS - Tactical Terminal</title>
-    
-    <!-- Importando o Visual -->
+    <title>PEGASUS OS - Life RPG</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -25,10 +23,11 @@
     <div id="app-screen" class="hidden">
         
         <header>
-            <img id="header-avatar" class="avatar" src="" alt="Avatar">
+            <img id="header-avatar" class="avatar" src="" alt="Avatar" onclick="switchTab('inventory', document.getElementById('btn-inv'))" style="cursor:pointer;" title="Edit Profile">
             <div class="header-info" style="width: 100%;">
-                <h1 id="header-nick">OPERATOR</h1>
-                <p>Level <span id="header-level" style="color: var(--accent); font-weight: bold;">1</span> | Rank: <span id="header-rank" style="color: var(--accent);">BRONZE</span></p>
+                <h1 id="header-nick" style="margin-bottom:0;">OPERATOR</h1>
+                <div id="header-occ" style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; margin-top:-2px; margin-bottom:5px;">COMPUTER SCIENTIST</div>
+                <p style="margin-top:0;">Level <span id="header-level" style="color: var(--accent); font-weight: bold;">1</span> | Rank: <span id="header-rank" style="color: var(--accent);">BRONZE</span> | SP: <span id="header-sp" style="color: #ffaa00; font-weight: bold;">0</span></p>
                 <div class="progress-bar">
                     <div class="progress-fill" id="header-xp-bar"></div>
                 </div>
@@ -38,66 +37,112 @@
 
         <div id="page-quests" class="page">
             <h2 class="panel-title">ACTIVE MISSIONS</h2>
-            <div class="panel">
-                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">DAILY</h3>
-                <div id="quests-daily-container"></div>
+            
+            <div class="panel" style="border-color: #aa00ff;">
+                <h3 style="color: #dd88ff; font-size: 0.9rem; margin-bottom: 10px;">+ OBJETIVO PESSOAL (XP Reduzida)</h3>
+                <input type="text" id="custom-quest-title" placeholder="Defina sua própria meta...">
+                <select id="custom-quest-type">
+                    <option value="daily">Prioridade Diária</option>
+                    <option value="weekly">Prioridade Semanal</option>
+                    <option value="monthly">Prioridade Mensal</option>
+                </select>
+                <button onclick="createCustomQuest()" style="border-color: #aa00ff; color: #dd88ff;">CADASTRAR OBJETIVO</button>
             </div>
-            <div class="panel">
-                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">WEEKLY</h3>
-                <div id="quests-weekly-container"></div>
-            </div>
-            <div class="panel">
-                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">MONTHLY</h3>
-                <div id="quests-monthly-container"></div>
-            </div>
+
+            <div class="panel"><h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">DAILY</h3><div id="quests-daily-container"></div></div>
+            <div class="panel"><h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">WEEKLY</h3><div id="quests-weekly-container"></div></div>
+            <div class="panel"><h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">MONTHLY</h3><div id="quests-monthly-container"></div></div>
         </div>
 
         <div id="page-combat" class="page hidden">
-            <h2 class="panel-title">COMBAT LOG</h2>
+            <h2 class="panel-title">PROGRESSION TRACKS</h2>
             <div class="panel" id="martial-arts-list"></div>
             
             <div class="panel">
-                <h3 style="color: var(--accent); font-size: 0.9rem; margin-bottom: 10px;">+ REGISTER DISCIPLINE</h3>
-                <input type="text" id="new-ma-name" placeholder="Discipline (e.g. Jiu-Jitsu)">
+                <h3 style="color: var(--accent); font-size: 0.9rem; margin-bottom: 10px;">+ INICIAR NOVA TRILHA</h3>
+                <select id="new-ma-type"></select>
                 <input type="date" id="new-ma-date">
-                <select id="new-ma-color">
-                    <option value="#ffffff">White Belt</option>
-                    <option value="#0044cc">Blue Belt</option>
-                    <option value="#6600cc">Purple Belt</option>
-                    <option value="#663300">Brown Belt</option>
-                    <option value="#111111">Black Belt</option>
-                    <option value="#cc0000">Red Belt</option>
-                </select>
-                <button onclick="addMartialArt()">REGISTER</button>
+                <button onclick="addDiscipline()">REGISTER</button>
             </div>
         </div>
 
         <div id="page-codex" class="page hidden">
             <h2 class="panel-title">THE CODEX</h2>
             <div class="panel">
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">
-                    Loot acquired via missions. Ultra Rares drop at 0.01%.
-                </p>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">Artefatos obtidos através da disciplina.</p>
                 <div id="codex-grid" class="codex-grid"></div>
             </div>
         </div>
 
         <div id="page-skills" class="page hidden">
             <h2 class="panel-title">SKILL TREE</h2>
+            
+            <div class="panel" style="border-color: var(--accent); border-style: dashed;">
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">+ FORJAR NOVA HABILIDADE</h3>
+                <input type="text" id="new-skill-name" placeholder="O que você quer aprender?">
+                <textarea id="new-skill-desc" placeholder="Descrição da habilidade..." style="width:100%; background:#000; color:var(--accent); border:1px solid #333; padding:10px; margin-bottom:10px; resize:none;"></textarea>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-size: 0.6rem; color: var(--text-muted);">Área</label>
+                        <select id="new-skill-cat" style="padding: 5px;"></select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.6rem; color: var(--text-muted);">Req. Nv.</label>
+                        <input type="number" id="new-skill-req" value="1" style="padding: 5px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.6rem; color: var(--text-muted);">Custo SP</label>
+                        <input type="number" id="new-skill-cost" value="1" style="padding: 5px;">
+                    </div>
+                </div>
+                <button onclick="createCustomSkill()">FORJAR HABILIDADE</button>
+            </div>
+
             <div class="panel" id="skills-container"></div>
         </div>
 
-        <div id="page-settings" class="page hidden">
-            <h2 class="panel-title">SYSTEM SETTINGS</h2>
-            <div class="panel">
-                <input type="text" id="edit-nick" placeholder="New Nickname">
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">Change Avatar:</div>
-                <input type="file" id="edit-avatar" accept="image/*">
-                <button onclick="updateProfile()">SAVE PROFILE</button>
+        <div id="page-inventory" class="page hidden">
+            <h2 class="panel-title">PROFILE & INVENTORY</h2>
+            
+            <div class="panel" style="text-align: center; border-color: var(--accent); padding-top:25px;">
+                <label for="edit-avatar" style="cursor: pointer; display: inline-block; position: relative;">
+                    <img id="profile-avatar-large" src="https://via.placeholder.com/100/111/fff?text=OP" style="width:100px; height:100px; border-radius:50%; border:2px solid var(--accent); object-fit:cover;">
+                    <div style="position: absolute; bottom: 0; right: 0; background: var(--accent); color: #000; border-radius: 50%; width: 28px; height: 28px; line-height: 28px; font-size: 14px; font-weight:bold;">+</div>
+                </label>
+                <input type="file" id="edit-avatar" accept="image/*" style="display:none;" onchange="updateProfileAvatar()">
+                
+                <div style="margin-top: 15px;">
+                    <input type="text" id="edit-nick" placeholder="NICKNAME" onchange="updateProfileData()" style="text-align: center; font-size: 1.2rem; font-weight: bold; background: transparent; border: none; border-bottom: 1px dashed #444; color: var(--accent); width: 80%; padding: 5px; margin-bottom: 5px; text-transform: uppercase;">
+                    <input type="text" id="edit-occ" placeholder="OCUPAÇÃO" onchange="updateProfileData()" style="text-align: center; font-size: 0.8rem; background: transparent; border: none; border-bottom: 1px dashed #444; color: var(--text-muted); width: 80%; padding: 5px; text-transform: uppercase; letter-spacing: 1px;">
+                </div>
+                <p style="font-size:0.6rem; color:#555; margin-top:10px;">Clique nos textos ou na foto para editar. Salva automaticamente.</p>
             </div>
+
+            <div class="panel" style="border-color: #555;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #333; padding-bottom:10px; margin-bottom:10px;">
+                    <h3 style="color: #fff; font-size: 0.9rem;">SLOTS OCUPADOS</h3>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span id="inv-slots-count" style="color:var(--accent); font-weight:bold;">0 / 5</span>
+                        <button onclick="expandInventory()" style="margin:0; width:auto; padding:5px; font-size:0.7rem; border-color:#ffaa00; color:#ffaa00;">+3 SLOTS (CUSTO: 1 SP)</button>
+                    </div>
+                </div>
+                <div id="duplicates-container"></div>
+            </div>
+
             <div class="panel">
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">COLLECTIONS DATABASE (01-99)</h3>
+                <div id="collections-grid" class="cb-grid"></div>
+            </div>
+
+            <div class="panel">
+                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">GLOBAL BRIEFINGS (01-49)</h3>
+                <div id="briefings-grid" class="cb-grid"></div>
+            </div>
+
+            <div class="panel" style="margin-top: 25px;">
                 <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">SYSTEM COLOUR</h3>
-                <input type="color" id="edit-color" value="#00ffff" style="height: 50px; padding: 0; cursor: pointer;">
+                <input type="color" id="edit-color" value="#00ffff" style="height: 50px; padding: 0; cursor: pointer; border:none;">
                 <button onclick="updateThemeColor()">APPLY COLOUR</button>
             </div>
             <button onclick="resetSystem()" style="border-color: #550000; color: #ff5555; margin-top: 20px;">[ DANGER ] FACTORY RESET</button>
@@ -105,14 +150,14 @@
 
         <nav class="navbar">
             <button class="nav-btn active" onclick="switchTab('quests', this)">Missions</button>
-            <button class="nav-btn" onclick="switchTab('combat', this)">Combat</button>
+            <button class="nav-btn" onclick="switchTab('combat', this)">Disciplines</button>
             <button class="nav-btn" onclick="switchTab('codex', this)">Codex</button>
             <button class="nav-btn" onclick="switchTab('skills', this)">Skills</button>
-            <button class="nav-btn" onclick="switchTab('settings', this)">Config</button>
+            <button id="btn-inv" class="nav-btn" onclick="switchTab('inventory', this)">Inventory</button>
         </nav>
     </div>
 
-    <!-- Importando os Dados e a Lógica no final do body para otimizar carregamento -->
+    <script src="itens.js"></script>
     <script src="dados.js"></script>
     <script src="app.js"></script>
 </body>
