@@ -112,11 +112,17 @@
                 </label>
                 <input type="file" id="edit-avatar" accept="image/*" style="display:none;" onchange="updateProfileAvatar()">
                 
+                <!-- NOVA SESSÃO: ATUALIZAR FOTO VIA LINK -->
+                <div style="margin-top: 15px; border-top: 1px dashed #333; padding-top: 15px;">
+                    <input type="text" id="input-link-foto" placeholder="COLE O LINK DA IMAGEM AQUI" autocomplete="off" style="text-align: center; font-size: 0.7rem; background: #000; border: 1px solid #444; color: var(--accent); width: 80%; padding: 8px; margin-bottom: 8px;">
+                    <button onclick="atualizarFotoViaLink()" style="font-size: 0.7rem; width: 80%; margin: 0 auto; display: block; border-color: var(--accent); color: var(--accent);">CARREGAR LINK EXTERNO</button>
+                </div>
+                
                 <div style="margin-top: 15px;">
                     <input type="text" id="edit-nick" placeholder="NICKNAME" onchange="updateProfileData()" style="text-align: center; font-size: 1.2rem; font-weight: bold; background: transparent; border: none; border-bottom: 1px dashed #444; color: var(--accent); width: 80%; padding: 5px; margin-bottom: 5px; text-transform: uppercase;">
                     <input type="text" id="edit-occ" placeholder="OCUPAÇÃO" onchange="updateProfileData()" style="text-align: center; font-size: 0.8rem; background: transparent; border: none; border-bottom: 1px dashed #444; color: var(--text-muted); width: 80%; padding: 5px; text-transform: uppercase; letter-spacing: 1px;">
                 </div>
-                <p style="font-size:0.6rem; color:#555; margin-top:10px;">Clique nos textos ou na foto para editar. Salva automaticamente.</p>
+                <p style="font-size:0.6rem; color:#555; margin-top:10px;">Clique nos textos ou adicione um link para editar.</p>
             </div>
 
             <div class="panel" style="border-color: #555;">
