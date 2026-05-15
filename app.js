@@ -515,6 +515,24 @@ function updateProfileData() {
     saveAndRefresh();
 }
 function updateProfileAvatar() { processImage(document.getElementById('edit-avatar'), () => { saveAndRefresh(); }); }
+
+// ---> FUNÇÃO NOVA: ATUALIZAR FOTO VIA LINK <---
+function atualizarFotoViaLink() {
+    const inputElement = document.getElementById('input-link-foto');
+    if(!inputElement) return;
+
+    const linkDigitado = inputElement.value;
+
+    if (linkDigitado.trim() !== "") {
+        db.avatar = linkDigitado; // Joga o link direto no seu banco de dados
+        inputElement.value = ""; // Limpa o campo
+        saveAndRefresh(); // Salva e atualiza toda a tela (header e perfil)
+        showAlert("AVATAR ATUALIZADO VIA LINK");
+    } else {
+        showAlert("SISTEMA: INSIRA UM LINK VÁLIDO.");
+    }
+}
+
 function switchTab(tabName, btnElement) {
     document.querySelectorAll('.page').forEach(page => { if(page.id !== 'setup-screen') page.classList.add('hidden'); });
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
