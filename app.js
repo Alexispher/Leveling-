@@ -10,12 +10,19 @@ let db = {
     // LIMITES DE CRIAÇÃO (1 por ciclo)
     customLimits: { daily: false, weekly: false, monthly: false },
     
-    // INVENTÁRIO
-    occupation: "Computer Scientist",
+    // INVENTÁRIO & CODEX
+    occupation: " ",
     inventorySlots: 5,
     duplicates: [],
     collections: [],
-    briefings: []
+    briefings: [],
+    achievements: [],
+    
+    // RASTREADOR DE ESTATÍSTICAS (Para Troféus)
+    stats: { 
+        totalMissions: 0, customMissions: 0, gymMissions: 0, cardioMissions: 0, 
+        nightMissions: 0, streakDays: 0, lastMissionDate: "", fastMonthlyStreak: 0
+    }
 };
 
 const ranks = [
@@ -24,6 +31,11 @@ const ranks = [
     { name: "Diamond", color: "#b9f2ff" }, { name: "Master", color: "#ff00ff" }, 
     { name: "Grandmaster", color: "#ff0000" }, { name: "Ruby", color: "#e0115f" }
 ];
+
+// --- NOVO SISTEMA DE XP ---
+function getXPReq(level) {
+    return Math.floor(100 * Math.pow(1.2, level - 1));
+}
 
 function init() {
     const saved = localStorage.getItem('pegasus_db_v8');
@@ -35,6 +47,9 @@ function init() {
         if(!db.duplicates) db.duplicates = [];
         if(!db.collections) db.collections = [];
         if(!db.briefings) db.briefings = [];
+        if(!db.achievements) db.achievements = [];
+        if(!db.stats) db.stats = { totalMissions: 0, customMissions: 0, gymMissions: 0, cardioMissions: 0, nightMissions: 0, streakDays: 0, lastMissionDate: "" };
+        if(db.stats.fastMonthlyStreak === undefined) db.stats.fastMonthlyStreak = 0;
         if(!db.inventorySlots) db.inventorySlots = 5;
         if(!db.occupation) db.occupation = "Computer Scientist";
         if(!db.customLimits) db.customLimits = { daily: false, weekly: false, monthly: false };
@@ -75,8 +90,37 @@ function setupNotifications() {
     }
 }
 
-// === SISTEMA DE MISSÕES E TEMPO ===
+// === SISTEMA DE ACHIEVEMENTS ===
+function unlockAchievement(id) {
+    if (!db.achievements) db.achievements = [];
+    if (!db.achievements.includes(id)) {
+        db.achievements.push(id);
+        const ach = achievementsDB.find(a => a.id === id);
+        if (ach) showAlert(`🏆 TROFÉU DESBLOQUEADO: ${ach.name}`);
+        saveAndRefresh();
+        
+        // Checa se pegou tudo para o Platina
+        if (db.achievements.length >= achievementsDB.length - 1 && !db.achievements.includes("ach_0")) {
+            unlockAchievement("ach_0"); // Easy Peasy Lemon Squeezy
+        }
+    }
+}
 
+function checkSkillsAchievement() {
+    let highLevelSkills = 0;
+    // Conta skills nativas >= 15
+    Object.values(skillsDB).flat().forEach(s => {
+        if(db.unlockedSkills.includes(s.id) && s.req >= 15) highLevelSkills++;
+    });
+    // Conta skills customizadas >= 15
+    db.customSkills.forEach(s => {
+        if(db.unlockedSkills.includes(s.id) && s.req >= 15) highLevelSkills++;
+    });
+    
+    if (highLevelSkills >= 5) unlockAchievement("ach_17"); // Tree Or Treat
+}
+
+// === SISTEMA DE MISSÕES E TEMPO ===
 function checkQuestResets() {
     const now = new Date();
     let updated = false;
@@ -149,6 +193,64 @@ function actQuest(id, type, isCustom, action) {
         showAlert("Missão Iniciada! O relógio está correndo.");
     } else if (action === 'complete') {
         quest.status = 'completed';
+        
+        // --- RASTREAMENTO DE ESTATÍSTICAS PARA TROFÉUS ---
+        db.stats.totalMissions++;
+        if (isCustom) db.stats.customMissions++;
+        
+        const qTitle = quest.title ? quest.title.toLowerCase() : "";
+        const qDesc = quest.desc ? quest.desc.toLowerCase() : "";
+        const qArea = quest.area || "";
+
+        if (qArea === "Saúde" || qArea === "Academia") db.stats.gymMissions++;
+        if (qTitle.includes("cardio") || qTitle.includes("caminhada") || qTitle.includes("corrida") || qDesc.includes("caminhada") || qDesc.includes("cardio")) {
+            db.stats.cardioMissions++;
+        }
+
+        const hour = new Date().getHours();
+        if (type === 'weekly' && (hour >= 18 || hour < 5)) db.stats.nightMissions++;
+
+        // Verifica Streak
+        const todayStr = new Date().toDateString();
+        if (db.stats.lastMissionDate !== todayStr) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (db.stats.lastMissionDate === yesterday.toDateString()) {
+                db.stats.streakDays++;
+            } else {
+                db.stats.streakDays = 1;
+            }
+            db.stats.lastMissionDate = todayStr;
+        }
+
+        // Verifica Tempo para Troféus
+        const nowMs = Date.now();
+        const timeLimits = { daily: 24 * 3600000, weekly: 48 * 3600000, monthly: 72 * 3600000 };
+        const limit = timeLimits[quest.type || type];
+        const deadline = quest.startTime + limit;
+        const timeLeft = deadline - nowMs;
+
+        if (timeLeft > 0 && timeLeft <= 2000) unlockAchievement("ach_14"); // Don't Blink! (1 seg + delay)
+        
+        // Nova Lógica da Streak Mensal
+        if (type === 'monthly') {
+            if (timeLeft >= 48 * 3600000) {
+                db.stats.fastMonthlyStreak++;
+                if (db.stats.fastMonthlyStreak >= 2) unlockAchievement("ach_13"); // Fez 2 seguidas no prazo!
+            } else {
+                db.stats.fastMonthlyStreak = 0; // Demorou demais, quebrou a sequência
+            }
+        }
+
+        // Gatilhos de Troféus Baseados em Quantidade
+        unlockAchievement("ach_1"); // First Steps
+        if (db.stats.totalMissions >= 20) unlockAchievement("ach_3");
+        if (db.stats.streakDays >= 7) unlockAchievement("ach_2");
+        if (db.stats.nightMissions >= 2) unlockAchievement("ach_4");
+        if (db.stats.gymMissions >= 5) unlockAchievement("ach_9");
+        if (db.stats.cardioMissions >= 1) unlockAchievement("ach_10");
+        if (db.stats.customMissions >= 25) unlockAchievement("ach_15");
+
         addXP(quest.xp);
         rollLoot();
         saveAndRefresh();
@@ -158,15 +260,33 @@ function actQuest(id, type, isCustom, action) {
 // === XP E PROGRESSÃO ===
 function addXP(amount) {
     db.xp += amount;
-    while (db.xp >= 100) { db.level++; db.xp -= 100; db.skillPoints++; showAlert(`LEVEL UP! Nível ${db.level} | +1 SP`); }
+    let req = getXPReq(db.level);
+    
+    while (db.xp >= req) { 
+        db.level++; 
+        db.xp -= req; 
+        db.skillPoints++; 
+        showAlert(`LEVEL UP! Nível ${db.level} | +1 SP`);
+        if (db.level >= 70) unlockAchievement("ach_11"); // To Infinity and Beyond
+        req = getXPReq(db.level); 
+    }
     saveAndRefresh();
 }
 
 function removeXP(amount) {
     db.xp -= amount;
+    
     while (db.xp < 0) {
-        if (db.level > 1) { db.level--; db.xp += 100; showAlert(`NÍVEL CAIU... Agora Nível ${db.level}`); } 
-        else { db.xp = 0; break; }
+        if (db.level > 1) { 
+            db.level--; 
+            let req = getXPReq(db.level);
+            db.xp += req; 
+            showAlert(`NÍVEL CAIU... Agora Nível ${db.level}`); 
+        } 
+        else { 
+            db.xp = 0; 
+            break; 
+        }
     }
     saveAndRefresh();
 }
@@ -193,33 +313,47 @@ function unlockSkill(skillId, reqLevel, cost) {
     
     db.skillPoints -= cost;
     db.unlockedSkills.push(skillId);
+    
+    checkSkillsAchievement();
+    
     saveAndRefresh(); showAlert("Habilidade Desbloqueada!");
 }
 
 // === DISCIPLINAS ===
 function changeStripe(index, delta) {
     let arte = db.artes[index];
-    let beltsArray = progressionTracks[arte.type] || progressionTracks["Outro"];
+    let trackData = progressionTracks[arte.type] || progressionTracks["Outro (Geral)"];
     
     arte.graus += delta;
     
-    let currentBeltIdx = beltsArray.indexOf(arte.color);
-    if(currentBeltIdx === -1) currentBeltIdx = 0;
+    let currentLvlIdx = trackData.colors.indexOf(arte.color);
+    if (currentLvlIdx === -1) currentLvlIdx = 0;
     
-    if (arte.graus > 4) { 
-        if(currentBeltIdx < beltsArray.length - 1) {
-            arte.color = beltsArray[currentBeltIdx + 1];
-            arte.graus = 0; showAlert("PROMOÇÃO! Novo patamar alcançado.");
-        } else { arte.graus = 4; } 
+    if (arte.graus > trackData.maxGraus) { 
+        if(currentLvlIdx < trackData.colors.length - 1) {
+            arte.color = trackData.colors[currentLvlIdx + 1];
+            arte.graus = 0; 
+            showAlert("PROMOÇÃO! Novo patamar alcançado.");
+        } else { 
+            arte.graus = trackData.maxGraus; 
+        } 
     } else if (arte.graus < 0) { 
-        if (currentBeltIdx > 0) {
-            arte.color = beltsArray[currentBeltIdx - 1];
-            arte.graus = 4; showAlert("Rebaixado de nível.");
-        } else { arte.graus = 0; }
+        if (currentLvlIdx > 0) {
+            arte.color = trackData.colors[currentLvlIdx - 1];
+            arte.graus = trackData.maxGraus; 
+            showAlert("Rebaixado de nível.");
+        } else { 
+            arte.graus = 0; 
+        }
     }
 
-    if (delta > 0) { addXP(20); showAlert("Grau adicionado! +20 XP"); } 
-    else { removeXP(15); showAlert("Grau removido. Penalidade de XP."); }
+    if (delta > 0) { 
+        addXP(trackData.xpPerStep); 
+        showAlert(`Progresso registrado! +${trackData.xpPerStep} XP`); 
+    } else { 
+        removeXP(trackData.xpPerStep); 
+        showAlert("Progresso perdido. Penalidade de XP."); 
+    }
     saveAndRefresh();
 }
 
@@ -228,8 +362,11 @@ function addDiscipline() {
     const date = document.getElementById('new-ma-date').value;
     if (!type || !date) return showAlert("Erro: Preencha a disciplina e a data.");
     
-    const color = progressionTracks[type] ? progressionTracks[type][0] : "#ffffff"; 
+    const trackData = progressionTracks[type] || progressionTracks["Outro (Geral)"]; 
+    const color = trackData.colors ? trackData.colors[0] : "#ffffff"; 
+    
     db.artes.push({ type, name: type, date, color, graus: 0 });
+    unlockAchievement("ach_8"); // It Takes Gutwos
     saveAndRefresh();
 }
 
@@ -243,6 +380,13 @@ function rollLoot() {
             if (!db.inventory.includes(item.id)) {
                 db.inventory.push(item.id);
                 showAlert(`LOOT INÉDITO: ${item.name} (${item.rarity})`);
+                
+                // Checa se tem todos os artefatos (excluindo os de recompensa final 998 e 999)
+                const totalArts = codexItems.length - 2;
+                if (db.inventory.filter(id => id !== 998 && id !== 999).length >= totalArts) {
+                    unlockAchievement("ach_5"); // Drake's Fortune
+                }
+
             } else { 
                 if (item.rarity === "Epic" || item.rarity === "Legendary" || item.rarity === "Mythic") {
                     addXP(50); showAlert(`Item Lendário Repetido convertido em +50 XP!`);
@@ -266,18 +410,6 @@ function expandInventory() {
     } else { showAlert("SP Insuficiente. Custa 1 SP."); }
 }
 
-function checkBriefingAchievement() {
-    if (db.briefings.length >= 49 && !db.inventory.includes(998)) {
-        db.inventory.push(998); showAlert("REDE GLOBAL HACKEADA: Você desbloqueou The Traveller!");
-    }
-}
-
-function checkCollectorAchievement() {
-    if (db.collections.length >= 99 && !db.inventory.includes(999)) {
-        db.inventory.push(999); showAlert("LENDA VIVA: Você desbloqueou The Collector!");
-    }
-}
-
 function convertDuplicate(dupIndex, targetType) {
     db.duplicates.splice(dupIndex, 1); 
 
@@ -292,16 +424,121 @@ function convertDuplicate(dupIndex, targetType) {
         const drawn = locked[Math.floor(Math.random() * locked.length)];
         db.collections.push(drawn.id);
         showAlert(`Desbloqueado: Collection ${drawn.code}`);
-        checkCollectorAchievement();
+        
+        if (db.collections.length >= colMax) {
+            if (!db.inventory.includes(999)) { db.inventory.push(999); showAlert("LENDA VIVA: Você desbloqueou The Collector!"); }
+            unlockAchievement("ach_6"); // Master Collector
+        }
     } else if (targetType === 'briefing' && !briDone) {
         const locked = briefingsDB.filter(b => !db.briefings.includes(b.id));
         const drawn = locked[Math.floor(Math.random() * locked.length)];
         db.briefings.push(drawn.id);
         showAlert(`Briefing Descriptografado: ${drawn.code} ${drawn.title}`);
-        checkBriefingAchievement();
+        
+        if (db.briefings.length >= briMax) {
+            if (!db.inventory.includes(998)) { db.inventory.push(998); showAlert("REDE GLOBAL HACKEADA: Você desbloqueou The Traveller!"); }
+            unlockAchievement("ach_7"); // Around The World
+        }
     }
     saveAndRefresh();
 }
+
+// === CÓDEX E NAVEGAÇÃO ===
+function openCodexView(category) {
+    document.getElementById('codex-dashboard').classList.add('hidden');
+    document.getElementById('codex-details').classList.remove('hidden');
+    
+    const titleEl = document.getElementById('codex-details-title');
+    const gridEl = document.getElementById('codex-dynamic-grid');
+    gridEl.className = ""; // Limpa classes antigas
+
+    if (category === 'artefatos') {
+        titleEl.innerText = "ARTEFATOS";
+        gridEl.classList.add('codex-grid');
+        gridEl.innerHTML = '';
+        codexItems.forEach(item => {
+            if(item.id === 998 || item.id === 999) return; 
+            const unlocked = db.inventory.includes(item.id);
+            if (unlocked) {
+                gridEl.innerHTML += `<div class="item-card ${item.css}"><div class="item-icon">${item.icon}</div><div class="item-title">${item.name}</div><div class="item-desc">${item.desc}</div></div>`;
+            } else {
+                gridEl.innerHTML += `<div class="item-card locked"><div class="item-icon">❔</div><div class="item-title">???</div><div class="item-desc">???</div></div>`;
+            }
+        });
+    } 
+    else if (category === 'collections') {
+        titleEl.innerText = "COLLECTIONS DATABASE";
+        gridEl.classList.add('cb-grid');
+        gridEl.innerHTML = '';
+        collectionsDB.forEach(c => {
+            if(db.collections.includes(c.id)) { gridEl.innerHTML += `<div class="cb-item unlocked-col"><div class="cb-code">${c.code}</div><div class="cb-name">${c.name}</div></div>`; } 
+            else { gridEl.innerHTML += `<div class="cb-item"><div class="cb-code">${c.code}</div><div class="cb-name">???</div></div>`; }
+        });
+    }
+    else if (category === 'briefings') {
+        titleEl.innerText = "GLOBAL BRIEFINGS";
+        gridEl.classList.add('cb-grid');
+        gridEl.innerHTML = '';
+        briefingsDB.forEach(b => {
+            if(db.briefings.includes(b.id)) { gridEl.innerHTML += `<div class="cb-item unlocked-bri"><div class="cb-code">${b.code}</div><div class="cb-name">${b.title}</div></div>`; } 
+            else { gridEl.innerHTML += `<div class="cb-item"><div class="cb-code">${b.code}</div><div class="cb-name">???</div></div>`; }
+        });
+    }
+    else if (category === 'achievements') {
+        titleEl.innerText = "TROPHIES & ACHIEVEMENTS";
+        gridEl.classList.add('ach-grid');
+        gridEl.innerHTML = '';
+        achievementsDB.forEach(ach => {
+            const unlocked = db.achievements.includes(ach.id);
+            if (unlocked) {
+                gridEl.innerHTML += `
+                    <div class="ach-item unlocked">
+                        <div class="ach-icon">${ach.icon}</div>
+                        <div class="ach-info"><h4>${ach.name}</h4><p>${ach.desc}</p></div>
+                    </div>`;
+            } else if (!ach.secret) {
+                gridEl.innerHTML += `
+                    <div class="ach-item locked">
+                        <div class="ach-icon" style="filter: grayscale(100%) opacity(30%);">❔</div>
+                        <div class="ach-info"><h4>???</h4><p>???</p></div>
+                    </div>`;
+            }
+        });
+    }
+}
+
+function closeCodexView() {
+    document.getElementById('codex-details').classList.add('hidden');
+    document.getElementById('codex-dashboard').classList.remove('hidden');
+    updateCodexDashboard(); 
+}
+
+function updateCodexDashboard() {
+    if(!document.getElementById('prog-art')) return;
+    
+    // Artefatos
+    const totalArts = codexItems.length - 2; 
+    const myArts = db.inventory.filter(id => id !== 998 && id !== 999).length;
+    document.getElementById('prog-art').innerText = `${myArts}/${totalArts}`;
+    document.getElementById('pct-art').innerText = ((myArts / totalArts) * 100).toFixed(2) + "%";
+
+    // Collections
+    const myCol = db.collections.length;
+    document.getElementById('prog-col').innerText = `${myCol}/99`;
+    document.getElementById('pct-col').innerText = ((myCol / 99) * 100).toFixed(2) + "%";
+
+    // Briefings
+    const myBri = db.briefings.length;
+    document.getElementById('prog-bri').innerText = `${myBri}/49`;
+    document.getElementById('pct-bri').innerText = ((myBri / 49) * 100).toFixed(2) + "%";
+
+    // Achievements
+    const myAch = db.achievements.length;
+    const totalAch = achievementsDB.length;
+    document.getElementById('prog-ach').innerText = `${myAch}/${totalAch}`;
+    document.getElementById('pct-ach').innerText = ((myAch / totalAch) * 100).toFixed(2) + "%";
+}
+
 
 // === RENDERIZAÇÃO DA UI ===
 function updateUI() {
@@ -326,16 +563,20 @@ function updateUI() {
     
     document.getElementById('header-avatar').src = db.avatar || 'https://via.placeholder.com/60/111/fff?text=OP';
     document.getElementById('header-level').innerText = db.level;
-    document.getElementById('header-xp').innerText = db.xp;
     document.getElementById('header-sp').innerText = db.skillPoints;
-    document.getElementById('header-xp-bar').style.width = db.xp + "%";
+    
+    let reqXP = getXPReq(db.level);
+    document.getElementById('header-xp-text').innerText = `${Math.floor(db.xp)} / ${reqXP}`;
+    
+    let xpPercentage = Math.min(100, (db.xp / reqXP) * 100);
+    document.getElementById('header-xp-bar').style.width = xpPercentage + "%";
 
     if(document.getElementById('edit-nick')) document.getElementById('edit-nick').value = db.nick;
     if(document.getElementById('edit-occ')) document.getElementById('edit-occ').value = db.occupation;
     if(document.getElementById('profile-avatar-large')) document.getElementById('profile-avatar-large').src = db.avatar || 'https://via.placeholder.com/100/111/fff?text=OP';
 
-    renderQuests(); renderCodex(); renderDisciplines(); renderSkills();
-    renderInventory(); renderCollectionsGrid(); renderBriefingsGrid();   
+    renderQuests(); renderDisciplines(); renderSkills(); renderInventory(); 
+    updateCodexDashboard();
 }
 
 function renderQuests() {
@@ -399,8 +640,8 @@ function renderInventory() {
             if (colDone && briDone) {
                 btnHTML = `<button class="btn-claim" onclick="convertDuplicate(${index}, 'sp')" style="border-color:#ffaa00; color:#ffaa00;">Extrair SP</button>`;
             } else {
-                if (!colDone) btnHTML += `<button class="btn-claim" onclick="convertDuplicate(${index}, 'collection')">Virar Collection</button>`;
-                if (!briDone) btnHTML += `<button class="btn-claim" onclick="convertDuplicate(${index}, 'briefing')" style="border-color:#00ffaa; color:#00ffaa;">Virar Briefing</button>`;
+                if (!colDone) btnHTML += `<button class="btn-claim" onclick="convertDuplicate(${index}, 'collection')">Fabricar Collection</button>`;
+                if (!briDone) btnHTML += `<button class="btn-claim" onclick="convertDuplicate(${index}, 'briefing')" style="border-color:#00ffaa; color:#00ffaa;">Fabricar Briefing</button>`;
             }
 
             dupContainer.innerHTML += `
@@ -415,41 +656,62 @@ function renderInventory() {
     }
 }
 
-function renderCodex() {
-    const grid = document.getElementById('codex-grid');
-    grid.innerHTML = '';
-    codexItems.forEach(item => {
-        const unlocked = db.inventory.includes(item.id);
-        grid.innerHTML += unlocked ? `
-            <div class="item-card ${item.css}">
-                <div class="item-icon">${item.icon}</div>
-                <div class="item-title">${item.name}</div>
-                <div class="item-desc">${item.desc}</div>
-                <div style="font-size: 0.6rem; margin-top:5px;">[ ${item.rarity} ]</div>
-            </div>` : `
-            <div class="item-card locked"><div class="item-icon">❔</div><div class="item-title">DESCONHECIDO</div><div class="item-desc">Trancado.</div></div>`;
-    });
-}
-
 function renderDisciplines() {
     const list = document.getElementById('martial-arts-list');
     list.innerHTML = "";
+    
     db.artes.forEach((a, i) => {
+        const trackData = progressionTracks[a.type] || progressionTracks["Outro (Geral)"];
         const days = Math.floor(Math.abs(new Date() - new Date(a.date)) / 86400000);
-        const stripes = '<div class="stripe"></div>'.repeat(Math.max(0, a.graus));
+        
+        const currentLvlIdx = trackData.colors.indexOf(a.color) > -1 ? trackData.colors.indexOf(a.color) : 0;
+        const levelName = trackData.levels[currentLvlIdx];
+
+        let visualHTML = "";
+        let controlesHTML = "";
+
+        if (trackData.type === 'belt') {
+            const stripes = '<div class="stripe"></div>'.repeat(Math.max(0, a.graus));
+            visualHTML = `<div class="belt" style="background-color: ${a.color};"><div class="stripes">${stripes}</div></div>`;
+            
+            controlesHTML = `
+                <div class="grau-controls">
+                    <button class="btn-grau" onclick="changeStripe(${i}, -1)">-</button>
+                    <span style="color:#aaa; font-size:0.8rem; line-height: 25px;">Graus: ${a.graus}/${trackData.maxGraus}</span>
+                    <button class="btn-grau" onclick="changeStripe(${i}, 1)">+</button>
+                </div>`;
+        } else {
+            visualHTML = `
+                <div style="margin-top:10px; padding: 10px; background: #050505; border-left: 3px solid ${a.color}; border-radius: 2px;">
+                    <span style="color: ${a.color}; font-weight:bold; font-size: 1.1rem; text-transform: uppercase;">${levelName}</span>
+                </div>`;
+                
+            if (trackData.maxGraus === 0) {
+                controlesHTML = `
+                    <div style="margin-top: 10px; text-align: center;">
+                        <button onclick="changeStripe(${i}, 1)" style="border-color: #00ffaa; color: #00ffaa; width: 100%; font-size: 0.8rem;">[ PROMOVER SENIORIDADE ]</button>
+                    </div>`;
+            } else {
+                const progressDots = '▮'.repeat(Math.max(0, a.graus)) + '▯'.repeat(Math.max(0, trackData.maxGraus - a.graus));
+                controlesHTML = `
+                    <div style="color: var(--text-muted); font-size: 0.8rem; letter-spacing: 2px; margin-top: 5px; text-align: center;">Progresso: ${progressDots}</div>
+                    <div class="grau-controls">
+                        <button class="btn-grau" onclick="changeStripe(${i}, -1)">-</button>
+                        <span style="color:#aaa; font-size:0.8rem; line-height: 25px;">Subnível: ${a.graus}/${trackData.maxGraus}</span>
+                        <button class="btn-grau" onclick="changeStripe(${i}, 1)">+</button>
+                    </div>`;
+            }
+        }
+
         list.innerHTML += `
             <div class="belt-container">
                 <div style="display:flex; justify-content:space-between; color:#fff;">
                     <span style="font-weight:bold; text-transform:uppercase;">${a.name}</span>
                     <span style="color:var(--accent);">${days} Dias</span>
                 </div>
-                <div class="belt" style="background-color: ${a.color};"><div class="stripes">${stripes}</div></div>
-                <div class="grau-controls">
-                    <button class="btn-grau" onclick="changeStripe(${i}, -1)">-</button>
-                    <span style="color:#aaa; font-size:0.8rem; line-height: 25px;">${a.graus} Graus</span>
-                    <button class="btn-grau" onclick="changeStripe(${i}, 1)">+</button>
-                </div>
-                <button onclick="if(confirm('Remover trilha?')){ db.artes.splice(${i}, 1); saveAndRefresh(); }" style="padding: 5px; margin-top: 5px; font-size: 0.7rem; border-color: #444; color: #888;">Remover Disciplina</button>
+                ${visualHTML}
+                ${controlesHTML}
+                <button onclick="if(confirm('Remover trilha?')){ db.artes.splice(${i}, 1); saveAndRefresh(); }" style="padding: 5px; margin-top: 10px; font-size: 0.7rem; border-color: #444; color: #888;">Remover Trilha</button>
             </div>`;
     });
 }
@@ -484,55 +746,16 @@ function renderSkillNode(skill, container) {
         </div>`;
 }
 
-function renderCollectionsGrid() {
-    const grid = document.getElementById('collections-grid');
-    if(!grid) return;
-    let html = '';
-    collectionsDB.forEach(c => {
-        const isUnlocked = db.collections.includes(c.id);
-        if(isUnlocked) { html += `<div class="cb-item unlocked-col"><div class="cb-code">${c.code}</div><div class="cb-name">${c.name}</div></div>`; } 
-        else { html += `<div class="cb-item"><div class="cb-code">${c.code}</div><div class="cb-name">???</div></div>`; }
-    });
-    grid.innerHTML = html;
-}
-
-function renderBriefingsGrid() {
-    const grid = document.getElementById('briefings-grid');
-    if(!grid) return;
-    let html = '';
-    briefingsDB.forEach(b => {
-        const isUnlocked = db.briefings.includes(b.id);
-        if(isUnlocked) { html += `<div class="cb-item unlocked-bri"><div class="cb-code">${b.code}</div><div class="cb-name">${b.title}</div></div>`; } 
-        else { html += `<div class="cb-item"><div class="cb-code">${b.code}</div><div class="cb-name">???</div></div>`; }
-    });
-    grid.innerHTML = html;
-}
-
 // === UTILITÁRIOS ===
 function updateProfileData() {
     db.nick = document.getElementById('edit-nick').value || "OPERATOR";
     db.occupation = document.getElementById('edit-occ').value || "COMPUTER SCIENTIST";
+    if (db.occupation !== "Computer Scientist" && db.occupation !== "COMPUTER SCIENTIST" && db.occupation !== "") {
+        unlockAchievement("ach_12"); // Catchphrase
+    }
     saveAndRefresh();
 }
 function updateProfileAvatar() { processImage(document.getElementById('edit-avatar'), () => { saveAndRefresh(); }); }
-
-// ---> FUNÇÃO NOVA: ATUALIZAR FOTO VIA LINK <---
-function atualizarFotoViaLink() {
-    const inputElement = document.getElementById('input-link-foto');
-    if(!inputElement) return;
-
-    const linkDigitado = inputElement.value;
-
-    if (linkDigitado.trim() !== "") {
-        db.avatar = linkDigitado; // Joga o link direto no seu banco de dados
-        inputElement.value = ""; // Limpa o campo
-        saveAndRefresh(); // Salva e atualiza toda a tela (header e perfil)
-        showAlert("AVATAR ATUALIZADO VIA LINK");
-    } else {
-        showAlert("SISTEMA: INSIRA UM LINK VÁLIDO.");
-    }
-}
-
 function switchTab(tabName, btnElement) {
     document.querySelectorAll('.page').forEach(page => { if(page.id !== 'setup-screen') page.classList.add('hidden'); });
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
@@ -541,7 +764,13 @@ function switchTab(tabName, btnElement) {
     updateUI();
 }
 function createProfile() { db.nick = document.getElementById('input-nick').value || "OPERATOR"; processImage(document.getElementById('input-avatar'), () => saveAndRefresh()); }
-function updateThemeColor() { db.theme = document.getElementById('edit-color').value; applyTheme(); saveAndRefresh(); showAlert("Cor Atualizada!"); }
+function updateThemeColor() { 
+    db.theme = document.getElementById('edit-color').value; 
+    applyTheme(); 
+    unlockAchievement("ach_16"); // Chameleon
+    saveAndRefresh(); 
+    showAlert("Cor Atualizada!"); 
+}
 function applyTheme() { document.documentElement.style.setProperty('--accent', db.theme); document.getElementById('edit-color').value = db.theme; }
 function processImage(fileInput, cb) {
     if (fileInput.files && fileInput.files[0]) {
@@ -605,6 +834,7 @@ setInterval(() => {
                     const timeLeft = deadline - nowMs;
                     
                     if (timeLeft <= 0) {
+                        if ((q.type || type) === 'monthly') db.stats.fastMonthlyStreak = 0; // Quebra a sequência se falhar
                         list.splice(i, 1); 
                         if ("Notification" in window && Notification.permission === "granted") {
                             new Notification("PEGASUS OS: Falha Crítica", { body: `Tempo esgotado para a missão: ${q.title}. XP e recompensa perdidos.`});
@@ -640,6 +870,7 @@ setInterval(() => {
             const timeLeft = deadline - nowMs;
             
             if (timeLeft <= 0) {
+                if (q.type === 'monthly') db.stats.fastMonthlyStreak = 0; // Quebra a sequência se falhar o custom mensal
                 db.customQuests.splice(i, 1);
                 if ("Notification" in window && Notification.permission === "granted") {
                     new Notification("PEGASUS OS: Falha Crítica", { body: `Tempo esgotado para o seu objetivo: ${q.title}.`});

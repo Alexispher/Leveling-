@@ -84,13 +84,13 @@ const codexItems = [
     },
     {
         id: 10,
-        name: "Grappling Hook da Ada",
+        name: "Batarangue",
         rarity: "Legendary",
         css: "rarity-legendary",
         chance: 0.8,
-        icon: "🪝",
-        desc: "Ferramenta de infiltração perfeita. Assinatura em vermelho."
-    },
+        icon: "🦇",
+        desc: "Um boomerang desconhecido em formato de morcego."
+    },    
     {
         id: 11,
         name: "Coroa da Constância",

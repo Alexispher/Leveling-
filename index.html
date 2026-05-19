@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PEGASUS - Leveling</title>
+    <title>PEGASUS OS - Life RPG</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -31,7 +31,7 @@
                 <div class="progress-bar">
                     <div class="progress-fill" id="header-xp-bar"></div>
                 </div>
-                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; text-align: right;"><span id="header-xp">0</span>/100 XP</div>
+                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; text-align: right;"><span id="header-xp-text">0 / 100</span> XP</div>
             </div>
         </header>
 
@@ -68,9 +68,41 @@
 
         <div id="page-codex" class="page hidden">
             <h2 class="panel-title">THE CODEX</h2>
-            <div class="panel">
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">Artefatos obtidos através da disciplina.</p>
-                <div id="codex-grid" class="codex-grid"></div>
+            
+            <div id="codex-dashboard" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                
+                <div class="codex-card" onclick="openCodexView('artefatos')">
+                    <h3>ARTEFATOS</h3>
+                    <div class="codex-progress"><span id="prog-art">0/0</span></div>
+                    <div class="codex-pct" id="pct-art">0.00%</div>
+                </div>
+                
+                <div class="codex-card" onclick="openCodexView('collections')">
+                    <h3>COLLECTIONS</h3>
+                    <div class="codex-progress"><span id="prog-col">0/99</span></div>
+                    <div class="codex-pct" id="pct-col">0.00%</div>
+                </div>
+                
+                <div class="codex-card" onclick="openCodexView('briefings')">
+                    <h3>BRIEFINGS</h3>
+                    <div class="codex-progress"><span id="prog-bri">0/49</span></div>
+                    <div class="codex-pct" id="pct-bri">0.00%</div>
+                </div>
+                
+                <div class="codex-card" onclick="openCodexView('achievements')">
+                    <h3>ACHIEVEMENTS</h3>
+                    <div class="codex-progress"><span id="prog-ach">0/18</span></div>
+                    <div class="codex-pct" id="pct-ach">0.00%</div>
+                </div>
+
+            </div>
+
+            <div id="codex-details" class="hidden">
+                <button onclick="closeCodexView()" style="width: 100px; margin-bottom: 15px; border-color: #555; color: #aaa;">⬅ VOLTAR</button>
+                <div class="panel">
+                    <h3 id="codex-details-title" style="color: #fff; font-size: 1rem; margin-bottom: 15px; text-transform: uppercase;">CATEGORIA</h3>
+                    <div id="codex-dynamic-grid"></div>
+                </div>
             </div>
         </div>
 
@@ -112,17 +144,11 @@
                 </label>
                 <input type="file" id="edit-avatar" accept="image/*" style="display:none;" onchange="updateProfileAvatar()">
                 
-                <!-- NOVA SESSÃO: ATUALIZAR FOTO VIA LINK -->
-                <div style="margin-top: 15px; border-top: 1px dashed #333; padding-top: 15px;">
-                    <input type="text" id="input-link-foto" placeholder="COLE O LINK DA IMAGEM AQUI" autocomplete="off" style="text-align: center; font-size: 0.7rem; background: #000; border: 1px solid #444; color: var(--accent); width: 80%; padding: 8px; margin-bottom: 8px;">
-                    <button onclick="atualizarFotoViaLink()" style="font-size: 0.7rem; width: 80%; margin: 0 auto; display: block; border-color: var(--accent); color: var(--accent);">CARREGAR LINK EXTERNO</button>
-                </div>
-                
                 <div style="margin-top: 15px;">
                     <input type="text" id="edit-nick" placeholder="NICKNAME" onchange="updateProfileData()" style="text-align: center; font-size: 1.2rem; font-weight: bold; background: transparent; border: none; border-bottom: 1px dashed #444; color: var(--accent); width: 80%; padding: 5px; margin-bottom: 5px; text-transform: uppercase;">
                     <input type="text" id="edit-occ" placeholder="OCUPAÇÃO" onchange="updateProfileData()" style="text-align: center; font-size: 0.8rem; background: transparent; border: none; border-bottom: 1px dashed #444; color: var(--text-muted); width: 80%; padding: 5px; text-transform: uppercase; letter-spacing: 1px;">
                 </div>
-                <p style="font-size:0.6rem; color:#555; margin-top:10px;">Clique nos textos ou adicione um link para editar.</p>
+                <p style="font-size:0.6rem; color:#555; margin-top:10px;">Clique nos textos ou na foto para editar. Salva automaticamente.</p>
             </div>
 
             <div class="panel" style="border-color: #555;">
@@ -134,16 +160,6 @@
                     </div>
                 </div>
                 <div id="duplicates-container"></div>
-            </div>
-
-            <div class="panel">
-                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">COLLECTIONS DATABASE (01-99)</h3>
-                <div id="collections-grid" class="cb-grid"></div>
-            </div>
-
-            <div class="panel">
-                <h3 style="color: #fff; font-size: 0.9rem; margin-bottom: 10px;">GLOBAL BRIEFINGS (01-49)</h3>
-                <div id="briefings-grid" class="cb-grid"></div>
             </div>
 
             <div class="panel" style="margin-top: 25px;">
